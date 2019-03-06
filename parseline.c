@@ -7,8 +7,6 @@
 #define PROMPT 6
 #define NULLERR 21
 #define LENERR 39
-#define INERR 22
-#define OUTERR 23
 #define ARGS_MAX 10
 #define PIPELINE_MAX 10
 
@@ -104,8 +102,8 @@ int main(int argc, char *argv[]) {
 		}
 		else if (cmdlne[i] == '<') {
 			if (in_redir++) {
-				write(STDERR_FILENO, "bad input redirection\n",
-					INERR);
+				fprintf(stderr, "%s: bad input redirection",
+					argv_list[0]);
 				for (j = 0; j < arg_count; j++) {
 					free(argv_list[j]);
 				}
@@ -123,14 +121,25 @@ int main(int argc, char *argv[]) {
 					&& in[j] != '|'; j++) {
 					/* twiddle */
 				}
+				if (in[j] == '<' || in[j] == '>'
+					|| in[j] == '|') {
+					fprintf(stderr,
+						"%s: bad input redirection\n",
+						argv_list[0]);
+					for (j = 0;j < arg_count;j++) {
+						free(argv_list[j]);
+					}
+					free_all(stages, cur_stage);
+					return 4;
+				}
 				in[j] = '\0';
 				i += strlen(in);
 			}
 		}
 		else if (cmdlne[i] == '>') {
 			if (out_redir++) {
-				write(STDERR_FILENO, "bad output redirection\n",
-					OUTERR);
+				fprintf(stderr, "%s: bad output redirection",
+					argv_list[0]);
 				for (j = 0; j < arg_count; j++) {
 					free(argv_list[j]);
 				}
@@ -147,6 +156,17 @@ int main(int argc, char *argv[]) {
 					out[j] != '<' && out[j] != '>'
 					&& out[j] != '|'; j++) {
 					/* twiddle */
+				}
+				if (out[j] == '<' || out[j] == '>' ||
+					out[j] == '|') {
+					fprintf(stderr,
+						"%s: output redirection\n",
+						argv_list[0]);
+					for (j = 0;j < arg_count;j++) {
+						free(argv_list[j]);
+					}
+					free_all(stages, cur_stage);
+					return 4;
 				}
 				out[j] = '\0';
 				i += strlen(out);
