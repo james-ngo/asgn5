@@ -12,7 +12,7 @@
 
 int main(int argc, char *argv[]) {
 	int num, arg_count, cur_stage = 0, i = 0, in_redir = 0, out_redir = 0;
-	int j;
+	int j, pipe_from = 0;
 	struct stage *stages = (struct stage*)calloc(PIPELINE_MAX,
 		sizeof(struct stage));
 	char *argv_list[ARGS_MAX];
@@ -25,13 +25,13 @@ int main(int argc, char *argv[]) {
 	if (1 >= (num = read(STDIN_FILENO, cmdlne, LNMAX + 1))) {
 		write(STDERR_FILENO, "invalid null command\n", NULLERR);
 		free(stages);
-		return 1;	
+		exit(1);	
 	}
 	else if (num > LNMAX) {
 		write(STDERR_FILENO,
 			"command line length exceeds max length\n", LENERR);
 		free(stages);
-		return 2;
+		exit(2);
 	}
 	cmdlne[strlen(cmdlne) - 1] = '\0';
 	strtok(cmdlne, " ");
@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
 					free(argv_list[j]);
 				}
 				free_all(stages, cur_stage);
-				return 1;			
+				exit(1);			
 			}
 			if (cmdlne[i] == '|' && !out_redir) {
 				sprintf(out, "pipe to stage %d", cur_stage + 1);
@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
 					free(argv_list[j]);
 				}
 				free(stages);
-				return 5;
+				exit(5);
 			}
 			if (arg_count < 1) {
 				write(STDERR_FILENO, "invalid null command\n",
@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
 					free(argv_list[j]);
 				}
 				free_all(stages, cur_stage);
-				return 1;
+				exit(1);
 			}
 			for (j = 0; j < num - 1; j++) {
 				if (cmdlne[j] == '\0') {
@@ -101,6 +101,7 @@ int main(int argc, char *argv[]) {
 			sprintf(in, "pipe from stage %d", cur_stage);
 			strcpy(out, "original stdout");
 			in_redir = 1;
+			pipe_from = 1;
 			out_redir = 0;
 			arg_count = 0;
 			strtok(cmdlne, " ");
@@ -110,14 +111,23 @@ int main(int argc, char *argv[]) {
 			cur_stage++;
 		}
 		else if (cmdlne[i] == '<') {
-			if (in_redir++) {
-				fprintf(stderr, "%s: bad input redirection",
+			if (pipe_from) {
+				fprintf(stderr, "%s: bad input redirection\n",
 					argv_list[0]);
 				for (j = 0; j < arg_count; j++) {
 					free(argv_list[j]);
 				}
 				free_all(stages, cur_stage);
-				return 3;
+				exit(4);
+			}
+			else if (in_redir++) {
+				fprintf(stderr, "%s: bad input redirection\n",
+					argv_list[0]);
+				for (j = 0; j < arg_count; j++) {
+					free(argv_list[j]);
+				}
+				free_all(stages, cur_stage);
+				exit(3);
 			}
 			else {
 				while (cmdlne[++i] == '\0' ||
@@ -139,7 +149,7 @@ int main(int argc, char *argv[]) {
 						free(argv_list[j]);
 					}
 					free_all(stages, cur_stage);
-					return 4;
+					exit(4);
 				}
 				in[j] = '\0';
 				i += strlen(in);
@@ -153,7 +163,7 @@ int main(int argc, char *argv[]) {
 					free(argv_list[j]);
 				}
 				free_all(stages, cur_stage);
-				return 4;
+				exit(4);
 			}
 			else {
 				while (cmdlne[++i] == '\0' ||
@@ -175,7 +185,7 @@ int main(int argc, char *argv[]) {
 						free(argv_list[j]);
 					}
 					free_all(stages, cur_stage);
-					return 4;
+					exit(4);
 				}
 				out[j] = '\0';
 				i += strlen(out);
@@ -186,12 +196,12 @@ int main(int argc, char *argv[]) {
 		}
 		else {
 			if (arg_count == ARGS_MAX) {
-				fprintf(stderr, "maximum pipeline argument"
+				fprintf(stderr, "maximum pipeline argument "
 					        "length exceeded\n");
 				for (j = 0; j < arg_count; j++) {
 					free(argv_list[j]);
 				}
-				return 7;
+				exit(7);
 			}
 			while (cmdlne[i] == '\0') {
 				i++;
