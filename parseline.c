@@ -43,6 +43,15 @@ int main(int argc, char *argv[]) {
 	strcpy(out, "original stdout");
 	while (i < num) {
 		if (cmdlne[i] == '|' || num - i == 1) {
+			if (cur_stage > 9) {
+				fprintf(stderr,"maximum number of commands "
+				              "exceeded\n");
+				for (j = 0; j < arg_count; j++) {
+					free(argv_list[j]);
+				}
+				free_all(stages, cur_stage);
+				return 1;			
+			}
 			if (cmdlne[i] == '|' && !out_redir) {
 				sprintf(out, "pipe to stage %d", cur_stage + 1);
 			}
@@ -62,7 +71,7 @@ int main(int argc, char *argv[]) {
 					free(argv_list[j]);
 				}
 				free_all(stages, cur_stage);
-				return 1;	
+				return 1;
 			}
 			for (j = 0; j < num - 1; j++) {
 				if (cmdlne[j] == '\0') {
