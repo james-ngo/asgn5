@@ -7,8 +7,8 @@
 #define PROMPT 6
 #define NULLERR 21
 #define LENERR 39
-#define INERR 21
-#define OUTERR 22
+#define INERR 22
+#define OUTERR 23
 #define ARGS_MAX 10
 #define PIPELINE_MAX 10
 
@@ -26,11 +26,13 @@ int main(int argc, char *argv[]) {
 	write(STDOUT_FILENO, "line: ", PROMPT);
 	if (1 >= (num = read(STDIN_FILENO, cmdlne, LNMAX + 1))) {
 		write(STDERR_FILENO, "invalid null command\n", NULLERR);
+		free(stages);
 		return 1;	
 	}
 	else if (num > LNMAX) {
 		write(STDERR_FILENO,
 			"command line length exceeds max length\n", LENERR);
+		free(stages);
 		return 2;
 	}
 	cmdlne[strlen(cmdlne) - 1] = '\0';
@@ -52,11 +54,16 @@ int main(int argc, char *argv[]) {
 				for (j = 0; j < arg_count; j++) {
 					free(argv_list[j]);
 				}
+				free(stages);
 				return 5;
 			}
 			if (arg_count < 1) {
 				write(STDERR_FILENO, "invalid null command\n",
 					NULLERR);
+				for (j = 0; j < arg_count; j++) {
+					free(argv_list[j]);
+				}
+				free_all(stages, cur_stage);
 				return 1;	
 			}
 			for (j = 0; j < i; j++) {
@@ -79,6 +86,7 @@ int main(int argc, char *argv[]) {
 					sizeof(char) * strlen(argv_list[j]));
 				strcpy(stages[cur_stage].argv_list[j],
 					argv_list[j]);
+				free(argv_list[j]);
 			}
 			strcpy(stages[cur_stage].in, in);
 			strcpy(stages[cur_stage].out, out);
@@ -98,6 +106,10 @@ int main(int argc, char *argv[]) {
 			if (in_redir++) {
 				write(STDERR_FILENO, "bad input redirection\n",
 					INERR);
+				for (j = 0; j < arg_count; j++) {
+					free(argv_list[j]);
+				}
+				free_all(stages, cur_stage);
 				return 3;
 			}
 			else {
@@ -119,6 +131,10 @@ int main(int argc, char *argv[]) {
 			if (out_redir++) {
 				write(STDERR_FILENO, "bad output redirection\n",
 					OUTERR);
+				for (j = 0; j < arg_count; j++) {
+					free(argv_list[j]);
+				}
+				free_all(stages, cur_stage);
 				return 4;
 			}
 			else {
@@ -165,9 +181,22 @@ int main(int argc, char *argv[]) {
 			arg_count++;
 		}
 	}
-
-	print_stage(stages, cur_stage); 
+	print_stage(stages, cur_stage);
+	free(stages);
 	return 0;
+}
+
+void free_all(struct stage *stages, int num_stages) {
+	int i, j;
+	for (i = 0; i < num_stages; i++ ) {
+		free(stages[i].pipeline);
+		free(stages[i].in);
+		free(stages[i].out);
+		for (j = 0; j < stages[i].argc; j++) {
+			free(stages[i].argv_list[j]);
+		}
+	}
+	free(stages);
 }
 
 void print_stage(struct stage *stages, int num_stages) {
@@ -180,6 +209,9 @@ void print_stage(struct stage *stages, int num_stages) {
 		printf("    output: %s\n", stages[i].out);
 		printf("      argc: %d\n", stages[i].argc);
 		printf("      argv: ");
+		free(stages[i].pipeline);
+		free(stages[i].in);
+		free(stages[i].out);
 		for (j = 0; j < stages[i].argc; j++) {
 			printf("\"%s\"", stages[i].argv_list[j]);
 			free(stages[i].argv_list[j]);

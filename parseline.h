@@ -12,4 +12,6 @@ struct stage {
 
 void print_stage(struct stage*, int);
 
+void free_all(struct stage*, int);
+
 #endif
