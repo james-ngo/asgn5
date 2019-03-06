@@ -64,9 +64,9 @@ int main(int argc, char *argv[]) {
 				free_all(stages, cur_stage);
 				return 1;	
 			}
-			for (j = 0; j < i; j++) {
-				if (marker[j] == '\0') {
-					marker[j] = ' ';
+			for (j = 0; j < num - 1; j++) {
+				if (cmdlne[j] == '\0') {
+					cmdlne[j] = ' ';
 				}
 			}
 			cmdlne[i++] = '\0';
