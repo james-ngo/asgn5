@@ -22,6 +22,9 @@ int main(int argc, char *argv[]) {
 	char cmdlne[LNMAX + 1];
 	char *marker;
 	write(STDOUT_FILENO, "line: ", PROMPT);
+/* We read into a buffer of LNMAX + 1. If we read nothing, we throw an error.
+ * If we read LNMAX + 1, we throw an error because the maximum command line
+ * length has been exceeded. */
 	if (1 >= (num = read(STDIN_FILENO, cmdlne, LNMAX + 1))) {
 		write(STDERR_FILENO, "invalid null command\n", NULLERR);
 		free(stages);
@@ -35,13 +38,22 @@ int main(int argc, char *argv[]) {
 	}
 	cmdlne[strlen(cmdlne) - 1] = '\0';
 	strtok(cmdlne, " ");
+/* We replace any space characters in the command line with null characters.
+ * This helps us separate this arguments more easily. */
 	while (strtok(NULL, " ")) {
 		/* twiddle */
 	}
 	marker = cmdlne;
 	strcpy(in, "original stdin");
 	strcpy(out, "original stdout");
+/* We loop through analyzing each string in the command line. After we
+ * scan a particular portion of the command line, we increment i by the length
+ * of that portion.*/
 	while (i < num) {
+/* If we reach a pipe or the end of the line, we a struct stage with all the
+ * information about the current stage. We throw an error if we are currently
+ * on the 11th stage. We also throw an error if the previous stage indicated
+ * output redirection. */
 		if (cmdlne[i] == '|' || num - i == 1) {
 			if (cur_stage > 9) {
 				fprintf(stderr,"maximum number of commands "
@@ -110,9 +122,15 @@ int main(int argc, char *argv[]) {
 			}
 			cur_stage++;
 		}
+/* If we reach a '<' character, we throw an error if there the input from this
+ * stage was supposed to be piped from the previous stage or if input
+ * redirection is attempted twice. We then check if the argument that follows
+ * the '<' character is not '<', '>', or '|'. If so, we throw an error. If
+ * everything's all good at this point we copy the string into the in variable.
+ * */
 		else if (cmdlne[i] == '<') {
 			if (pipe_from) {
-				fprintf(stderr, "%s: bad input redirection\n",
+				fprintf(stderr, "%s: ambiguous input\n",
 					argv_list[0]);
 				for (j = 0; j < arg_count; j++) {
 					free(argv_list[j]);
@@ -155,6 +173,7 @@ int main(int argc, char *argv[]) {
 				i += strlen(in);
 			}
 		}
+/* We do pretty much the exact same thing for '>' as we do for '<'. */
 		else if (cmdlne[i] == '>') {
 			if (out_redir++) {
 				fprintf(stderr, "%s: bad output redirection",
@@ -191,9 +210,13 @@ int main(int argc, char *argv[]) {
 				i += strlen(out);
 			}
 		}
+/* If we reach space of null characters we simply scan past them. */
 		else if (cmdlne[i] == '\0' || cmdlne[i] == ' ') {
 			i++;
 		}
+/* This else block assumes we have reached an additional argument to a command
+ * or are at a new command. Either way, we check to see if we have exceeded the
+ * 10 argument limit. If not, we add this string to a argv_list.*/
 		else {
 			if (arg_count == ARGS_MAX) {
 				fprintf(stderr, "maximum pipeline argument "
@@ -225,6 +248,7 @@ int main(int argc, char *argv[]) {
 	return 0;
 }
 
+/* This function does as the name implies.*/
 void free_all(struct stage *stages, int num_stages) {
 	int i, j;
 	for (i = 0; i < num_stages; i++ ) {
@@ -238,6 +262,7 @@ void free_all(struct stage *stages, int num_stages) {
 	free(stages);
 }
 
+/* This does all the output to stdout. */
 void print_stage(struct stage *stages, int num_stages) {
 	int i, j;
 	for (i = 0; i < num_stages; i++) {
